@@ -1,0 +1,228 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>お絵かきソフト</title>
+<style>
+body {
+    text-align:center;
+    margin:0 auto 10px;
+    padding: 10px 20px;
+background-color:#ccc
+}
+  
+#canvas {
+    border:1px solid gray;margin:0 auto 20px
+}
+ul {padding:0;margin:0}
+li {
+    width: 30px;
+    height: 30px;
+    display:inline-block;
+}
+
+button{width:100px; font-size:Large}
+
+p{margin:0.5em}
+
+.thumbnail {
+    border: 1px solid #999;
+    margin-right: 5px;
+}
+</style>
+</head>
+
+<body>
+  <div>
+<p>線の太さ<input type="range" min="1" max="100" value="4" id="lineWidth"><span id="lineNum">8</span>　透明度<input type="range" min="1" max="100" value="100" id="alpha"><span id="alphaNum">100</span>
+
+<ul>
+<li style="background-color:#111111"></li>
+<li style="background-color:#555555"></li>
+<li style="background-color:#AAAAAA"></li>
+<li style="background-color:#EEEEEE"></li>
+<li style="background-color:#aa4444"></li>
+</ul>
+
+<button id="undo">戻す</button>　
+<button id="clear">消去</button>　
+<button id="save">保存</button>
+</p>
+</br>
+<canvas id="canvas" width="500px" height="500px">ご覧のブラウザはHTML5に対応していません</canvas>
+
+<div id="gallery"></div>
+<script>
+
+//canvasの読み込み設定
+var canvas = document.getElementById("canvas");
+var ctx = canvas.getContext("2d");
+
+//マウスを操作する
+var mouse = {x:0,y:0,x1:0,y1:0,color:"black"};
+var draw = false;
+
+//マウスの座標を取得する
+canvas.addEventListener("mousemove",function(e) {
+  var rect = e.target.getBoundingClientRect();  
+  ctx.lineWidth = document.getElementById("lineWidth").value;
+	ctx.globalAlpha = document.getElementById("alpha").value/100;
+  
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+  
+  
+  //クリック状態なら描画をする
+  if(draw === true) {
+    ctx.beginPath();
+    ctx.moveTo(mouseX1,mouseY1);
+    ctx.lineTo(mouseX,mouseY);
+    ctx.lineCap = "round";
+    ctx.stroke();
+    mouseX1 = mouseX;
+    mouseY1 = mouseY;
+  }
+});
+  
+  //クリックしたら描画をOKの状態にする
+  canvas.addEventListener("mousedown",function(e) {
+    draw = true;
+    mouseX1 = mouseX;
+    mouseY1 = mouseY;
+    undoImage = ctx.getImageData(0, 0,canvas.width,canvas.height);
+});
+
+//クリックを離したら、描画を終了する
+canvas.addEventListener("mouseup", function(e){
+  draw = false;
+});
+//外からcanvasに戻ってきたとき描画オフ
+canvas.addEventListener("mouseleave", function(e){
+  draw = false;
+});
+
+
+//線の太さの値を変える
+lineWidth.addEventListener("mousemove",function(){  
+var lineNum = document.getElementById("lineWidth").value;
+document.getElementById("lineNum").innerHTML = lineNum;
+});
+
+//透明度の値を変える
+alpha.addEventListener("mousemove",function(){  
+var alphaNum = document.getElementById("alpha").value;
+document.getElementById("alphaNum").innerHTML = alphaNum;
+});
+
+
+//色を選択
+const colorList = document.querySelectorAll('li'); // すべてのli要素を取得
+colorList.forEach(li => {
+  li.addEventListener('click', () => {
+    ctx.strokeStyle = li.style.backgroundColor; // li要素の背景色をstrokeStyleに設定
+  });
+});
+
+//消去ボタンを起動する
+const clearButton = document.getElementById('clear'); // clearボタンを取得
+clearButton.addEventListener('click', (e) => {
+  e.preventDefault();
+  ctx.clearRect(0, 0, canvas.width, canvas.height); // canvasをクリア
+  undoImage = ctx.getImageData(0, 0, canvas.width, canvas.height); // clear後、undoImageを更新
+});
+
+//戻るボタンを配置
+const undoButton = document.getElementById('undo'); // undoボタンを取得
+undoButton.addEventListener('click', (e) => {
+    ctx.putImageData(undoImage,0,0); // canvasにundoImageを描画
+});
+
+//保存する
+const saveButton = document.getElementById('save'); // saveボタンを取得
+saveButton.addEventListener('click', () => {
+  const img = document.createElement('img'); // img要素を生成
+  img.width = 100;
+  img.height = 100;
+  img.src = canvas.toDataURL(); // canvasの内容をDataURLに変換し、img要素のsrcに設定
+
+  const link = document.createElement('a'); // a要素を生成
+  link.href = canvas.toDataURL().replace('image/png', 'application/octet-stream'); // DataURLをダウンロード可能な形式に変換
+  link.download = new Date().getTime() + '.png'; // ダウンロード時のファイル名を生成
+
+  link.appendChild(img); // img要素をa要素の子要素として追加
+  img.classList.add('thumbnail'); // img要素にthumbnailクラスを追加
+
+  document.getElementById('gallery').appendChild(link); // 生成したa要素をgalleryに追加
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height); // canvasをクリア
+  undoImage = ctx.getImageData(0, 0, canvas.width, canvas.height); // save後、undoImageを更新
+
+});
+
+
+
+//スマホ用
+	var finger=new Array;
+	for(var i=0;i<10;i++){
+		finger[i]={
+			x:0,y:0,x1:0,y1:0,
+			color:"rgb("
+			+Math.floor(Math.random()*16)*15+","
+			+Math.floor(Math.random()*16)*15+","
+			+Math.floor(Math.random()*16)*15
+			+")"
+		};
+	}
+
+	//タッチした瞬間座標を取得
+	canvas.addEventListener("touchstart",function(e){
+		e.preventDefault();
+		var rect = e.target.getBoundingClientRect();
+		ctx.lineWidth = document.getElementById("lineWidth").value;
+		ctx.globalAlpha = document.getElementById("alpha").value/100;
+		undoImage = ctx.getImageData(0, 0,canvas.width,canvas.height);
+		for(var i=0;i<finger.length;i++){
+			finger[i].x1 = e.touches[i].clientX-rect.left;
+			finger[i].y1 = e.touches[i].clientY-rect.top;
+			
+
+
+		}
+	});
+
+	//タッチして動き出したら描画
+	canvas.addEventListener("touchmove",function(e){
+		e.preventDefault();
+		var rect = e.target.getBoundingClientRect();
+		for(var i=0;i<finger.length;i++){
+			finger[i].x = e.touches[i].clientX-rect.left;
+			finger[i].y = e.touches[i].clientY-rect.top;
+			ctx.beginPath();
+			ctx.moveTo(finger[i].x1,finger[i].y1);
+			ctx.lineTo(finger[i].x,finger[i].y);
+			ctx.lineCap="round";
+			ctx.stroke();
+			finger[i].x1=finger[i].x;
+			finger[i].y1=finger[i].y;
+			
+		}
+	});
+	
+	//線の太さの値を変える
+lineWidth.addEventListener("touchmove",function(){  
+var lineNum = document.getElementById("lineWidth").value;
+document.getElementById("lineNum").innerHTML = lineNum;
+});
+
+//透明度の値を変える
+alpha.addEventListener("touchmove",function(){  
+var alphaNum = document.getElementById("alpha").value;
+document.getElementById("alphaNum").innerHTML = alphaNum;
+});
+ 
+
+
+</script>
+
+</body>
+</html>
